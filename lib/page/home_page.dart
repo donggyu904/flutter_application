@@ -1,5 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+
+import '../main.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.title});
@@ -41,7 +48,76 @@ class _HomePageState extends State<HomePage> {
               onPressed: () {
                 _showToast();
               },
-              child: const Text('bottom'),
+              child: const Text('show toast'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final notification = FlutterLocalNotificationsPlugin();
+                const android = AndroidNotificationDetails(
+                  '0',
+                  '알림 테스트',
+                  channelDescription: '알림 설정',
+                  importance: Importance.max,
+                  priority: Priority.max,
+                );
+                const ios = DarwinNotificationDetails();
+                const detail = NotificationDetails(
+                  android: android,
+                  iOS: ios,
+                );
+
+                final permission = Platform.isAndroid
+                    ? true
+                    : await notification
+                            .resolvePlatformSpecificImplementation<
+                                IOSFlutterLocalNotificationsPlugin>()
+                            ?.requestPermissions(
+                                alert: true, badge: true, sound: true) ??
+                        false;
+
+                if (!permission) {
+                  // await showNotiPermissionDialog(context);
+                  // return toast 권한이 없습니다.
+                  return;
+                }
+
+                // await flutterLocalNotificationsPlugin.show(
+                //   0,
+                //   'plain title',
+                //   'plain body',
+                //   detail,
+                // );
+// 타임존 셋팅 필요
+                final now = tz.TZDateTime.now(tz.local);
+                var notiDay = now.day;
+
+// // 예외처리
+//                 if (now.hour > hour ||
+//                     now.hour == hour && now.minute >= minute) {
+//                   notiDay = notiDay + 1;
+//                 }
+
+                await notification.zonedSchedule(
+                  1,
+                  'alarmTitle',
+                  'alarmDescription',
+                  tz.TZDateTime(
+                    tz.local,
+                    now.year,
+                    now.month,
+                    now.day,
+                    now.hour,
+                    now.minute + 1,
+                  ),
+                  detail,
+                  androidAllowWhileIdle: true,
+                  uiLocalNotificationDateInterpretation:
+                      UILocalNotificationDateInterpretation.absoluteTime,
+                  matchDateTimeComponents: DateTimeComponents.time,
+                  // payload: DateFormat('HH:mm').format(alarmTime),
+                );
+              },
+              child: const Text('add alarm'),
             ),
             const Center(child: Text('hi')),
           ]),
@@ -74,15 +150,5 @@ class _HomePageState extends State<HomePage> {
     );
 
     // Custom Toast Position
-    fToast.showToast(
-        child: toast,
-        toastDuration: Duration(seconds: 2),
-        positionedToastBuilder: (context, child) {
-          return Positioned(
-            top: 16.0,
-            left: 16.0,
-            child: child,
-          );
-        });
   }
 }
